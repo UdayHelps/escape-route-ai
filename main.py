@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-import random
+import requests
+import time
 
 app = FastAPI()
 
@@ -7,32 +8,30 @@ app = FastAPI()
 def root():
     return {"status": "EscapeRoute AI running"}
 
-@app.get("/escape_routes")
-def escape_routes(origin: str):
+@app.get("/flight_history")
+def flight_history(airport: str):
 
-    airlines = [
-        "Emirates",
-        "Qatar Airways",
-        "Air India",
-        "IndiGo",
-        "Turkish Airlines",
-        "Etihad",
-        "Lufthansa"
-    ]
+    now = int(time.time())
+    five_days = now - (5 * 24 * 60 * 60)
+
+    url = f"https://opensky-network.org/api/flights/departure?airport={airport}&begin={five_days}&end={now}"
+
+    try:
+        r = requests.get(url, timeout=20)
+        flights = r.json()
+    except:
+        return {"error": "Unable to fetch flight history"}
 
     results = []
 
-    for a in airlines:
-
-        flights = random.randint(1,15)
+    for f in flights:
 
         results.append({
-            "airline": a,
-            "active_flights": flights,
-            "chance_of_flying": flights * 6,
-            "chance_of_cancel": 100 - flights * 6
+            "flight": f.get("callsign"),
+            "origin": f.get("estDepartureAirport"),
+            "destination": f.get("estArrivalAirport"),
+            "departure_time": f.get("firstSeen"),
+            "arrival_time": f.get("lastSeen")
         })
-
-    results.sort(key=lambda x: x["active_flights"], reverse=True)
 
     return results
