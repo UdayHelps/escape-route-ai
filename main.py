@@ -10,37 +10,40 @@ def root():
 @app.get("/escape_routes")
 def escape_routes(origin: str):
 
-    url = "https://opensky-network.org/api/states/all"
+    try:
+        url = "https://opensky-network.org/api/states/all?lamin=20&lomin=50&lamax=30&lomax=60"
 
-    r = requests.get(url)
-    data = r.json()
+        r = requests.get(url, timeout=5)
 
-    states = data.get("states", [])
+        data = r.json()
 
-    routes = {}
+        states = data.get("states", [])
 
-    for s in states:
+        routes = {}
 
-        callsign = s[1]
+        for s in states:
 
-        if not callsign:
-            continue
+            callsign = s[1]
 
-        airline = callsign[:3]
+            if not callsign:
+                continue
 
-        if airline not in routes:
-            routes[airline] = 0
+            airline = callsign[:3]
 
-        routes[airline] += 1
+            routes[airline] = routes.get(airline, 0) + 1
 
-    results = []
+        results = [
+            {"airline": k, "active_flights": v}
+            for k, v in routes.items()
+        ]
 
-    for r in routes:
-        results.append({
-            "airline": r,
-            "active_flights": routes[r]
-        })
+        results.sort(key=lambda x: x["active_flights"], reverse=True)
 
-    results.sort(key=lambda x: x["active_flights"], reverse=True)
+        return results[:10]
 
-    return results[:10]
+    except Exception as e:
+
+        return {
+            "error": "Flight data temporarily unavailable",
+            "message": str(e)
+        }
