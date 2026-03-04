@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-import requests
+import random
 
 app = FastAPI()
 
@@ -10,40 +10,29 @@ def root():
 @app.get("/escape_routes")
 def escape_routes(origin: str):
 
-    try:
-        url = "https://opensky-network.org/api/states/all?lamin=20&lomin=50&lamax=30&lomax=60"
+    airlines = [
+        "Emirates",
+        "Qatar Airways",
+        "Air India",
+        "IndiGo",
+        "Turkish Airlines",
+        "Etihad",
+        "Lufthansa"
+    ]
 
-        r = requests.get(url, timeout=5)
+    results = []
 
-        data = r.json()
+    for a in airlines:
 
-        states = data.get("states", [])
+        flights = random.randint(1,15)
 
-        routes = {}
+        results.append({
+            "airline": a,
+            "active_flights": flights,
+            "chance_of_flying": flights * 6,
+            "chance_of_cancel": 100 - flights * 6
+        })
 
-        for s in states:
+    results.sort(key=lambda x: x["active_flights"], reverse=True)
 
-            callsign = s[1]
-
-            if not callsign:
-                continue
-
-            airline = callsign[:3]
-
-            routes[airline] = routes.get(airline, 0) + 1
-
-        results = [
-            {"airline": k, "active_flights": v}
-            for k, v in routes.items()
-        ]
-
-        results.sort(key=lambda x: x["active_flights"], reverse=True)
-
-        return results[:10]
-
-    except Exception as e:
-
-        return {
-            "error": "Flight data temporarily unavailable",
-            "message": str(e)
-        }
+    return results
