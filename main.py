@@ -1,37 +1,42 @@
 from fastapi import FastAPI
 import requests
-import time
+import os
+from datetime import datetime, timedelta
 
 app = FastAPI()
+
+API_KEY = os.getenv("RAPIDAPI_KEY")
 
 @app.get("/")
 def root():
     return {"status": "EscapeRoute AI running"}
 
-@app.get("/flight_history")
-def flight_history(airport: str):
+@app.get("/history")
+def history(airport: str):
 
-    now = int(time.time())
-    five_days = now - (5 * 24 * 60 * 60)
+    today = datetime.utcnow().strftime("%Y-%m-%d")
 
-    url = f"https://opensky-network.org/api/flights/departure?airport={airport}&begin={five_days}&end={now}"
+    url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{airport}/{today}"
 
-    try:
-        r = requests.get(url, timeout=20)
-        flights = r.json()
-    except:
-        return {"error": "Unable to fetch flight history"}
+    headers = {
+        "X-RapidAPI-Key": API_KEY,
+        "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"
+    }
 
-    results = []
+    r = requests.get(url, headers=headers)
 
-    for f in flights:
+    data = r.json()
 
-        results.append({
-            "flight": f.get("callsign"),
-            "origin": f.get("estDepartureAirport"),
-            "destination": f.get("estArrivalAirport"),
-            "departure_time": f.get("firstSeen"),
-            "arrival_time": f.get("lastSeen")
+    flights=[]
+
+    for f in data.get("departures",[]):
+
+        flights.append({
+            "flight": f.get("flight",{}).get("iata"),
+            "airline": f.get("airline",{}).get("name"),
+            "destination": f.get("arrival",{}).get("airport",{}).get("iata"),
+            "status": f.get("status"),
+            "departure_time": f.get("departure",{}).get("scheduledTimeUtc")
         })
 
-    return results
+    return flights
