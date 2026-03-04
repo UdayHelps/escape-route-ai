@@ -1,50 +1,46 @@
 from fastapi import FastAPI
 import requests
-from prediction import predict_routes
 
 app = FastAPI()
 
 @app.get("/")
 def root():
-    return {"status":"EscapeRoute AI running"}
+    return {"status": "EscapeRoute AI running"}
 
 @app.get("/escape_routes")
-def escape_routes(origin:str):
+def escape_routes(origin: str):
 
-    url="https://opensky-network.org/api/states/all"
+    url = "https://opensky-network.org/api/states/all"
 
-    r=requests.get(url)
-    data=r.json()
+    r = requests.get(url)
+    data = r.json()
 
-    states=data["states"]
+    states = data.get("states", [])
 
-    routes={}
+    routes = {}
 
     for s in states:
 
-        callsign=s[1]
+        callsign = s[1]
 
         if not callsign:
             continue
 
-        airline=callsign[:3]
+        airline = callsign[:3]
 
-        dest="UNKNOWN"
+        if airline not in routes:
+            routes[airline] = 0
 
-        if dest not in routes:
-            routes[dest]=0
+        routes[airline] += 1
 
-        routes[dest]+=1
-
-    results=[]
+    results = []
 
     for r in routes:
-
         results.append({
-            "destination":r,
-            "active_flights":routes[r]
+            "airline": r,
+            "active_flights": routes[r]
         })
 
-    results.sort(key=lambda x:x["active_flights"], reverse=True)
+    results.sort(key=lambda x: x["active_flights"], reverse=True)
 
     return results[:10]
